@@ -1,0 +1,119 @@
+# !pip install mendeleev
+import sympy as sp
+import matplotlib.pyplot as plt
+import numpy as np
+import mendeleev
+
+# Function to get a valid element with error handling
+def get_element():
+    while True:
+        element_name = input("Enter element name: ").strip()
+        try:
+            element = mendeleev.element(element_name)
+            return element
+        except:
+            print(f"Error: '{element_name}' is not a valid element. Please try again.")
+
+# Get the elements
+element1 = get_element()
+element2 = get_element()
+
+# Print properties of both elements
+print(f"{element1.name} Melting Point: {element1.melting_point} K")
+print(f"{element1.name} Fusion Heat: {element1.fusion_heat}")
+
+# Check if element1 has allotropes
+if isinstance(element1.melting_point, dict):
+    # If element1 has allotropes, ask the user to select one
+    print(f"{element1.name} Available Allotropes: {element1.melting_point.keys()}")
+    allotropes1 = element1.melting_point.keys()
+    while True:
+        chosen_allotrope1 = input(f"Which allotrope of {element1.name} would you like to use (choose from {', '.join(allotropes1)}): ").strip().lower()
+        if chosen_allotrope1 in [allotrope.lower() for allotrope in allotropes1]:
+            break
+        else:
+            print("Invalid option, please choose a valid allotrope.")
+    # Use the selected allotrope's melting point in Kelvin
+    T10 = element1.melting_point[chosen_allotrope1]
+else:
+    # If element1 has no allotropes, just use the single melting point value
+    T10 = element1.melting_point
+    if T10 is None:
+        print(f"{element1.name} has no defined melting point.")
+
+# Check if element2 has allotropes
+if isinstance(element2.melting_point, dict):
+    # If element2 has allotropes, ask the user to select one
+    print(f"{element2.name} Available Allotropes: {element2.melting_point.keys()}")
+    allotropes2 = element2.melting_point.keys()
+    while True:
+        chosen_allotrope2 = input(f"Which allotrope of {element2.name} would you like to use (choose from {', '.join(allotropes2)}): ").strip().lower()
+        if chosen_allotrope2 in [allotrope.lower() for allotrope in allotropes2]:
+            break
+        else:
+            print("Invalid option, please choose a valid allotrope.")
+    # Use the selected allotrope's melting point in Kelvin
+    T20 = element2.melting_point[chosen_allotrope2]
+else:
+    # If element2 has no allotropes, just use the single melting point value
+    T20 = element2.melting_point
+    if T20 is None:
+        print(f"{element2.name} has no defined melting point.")
+
+# Use fusion heat for both elements
+H1 = 1000 * element1.fusion_heat
+H2 = 1000 * element2.fusion_heat
+
+if T10 is not None:
+    if isinstance(element1.melting_point, dict):
+        print(f"Using {chosen_allotrope1.capitalize()} {element1.name} (melting point: {T10} K)")
+    else:
+        print(f"Using {element1.name} (melting point: {T10} K)")
+else:
+    print(f"Cannot proceed with {element1.name} due to missing melting point.")
+
+if T20 is not None:
+    if isinstance(element2.melting_point, dict):
+        print(f"Using {chosen_allotrope2.capitalize()} {element2.name} (melting point: {T20} K)")
+    else:
+        print(f"Using {element2.name} (melting point: {T20} K)")
+else:
+    print(f"Cannot proceed with {element2.name} due to missing melting point.")
+
+R = 8.3144
+x = np.linspace(0.00001, 0.99999, 100)
+dx = 0.01
+T1 = 0
+T2 = 0
+T = 0
+data = []
+for i in x:
+    H3 = i*H1 + (1-i)*H2
+    T1 = 1/(1/T10 - R*np.log(i)/H3)
+    T2 = 1/(1/T20 - R*np.log(1-i)/H3)
+    if T1 > T2:
+        T = T1
+    else:
+        T = T2
+    data.append([i, T])
+data = np.array(data)
+
+plt.plot(data[:,0], data[:,1], 'b')
+# Now we will find the eutectic point
+# First we will find the minimum temperature
+min_temp = np.min(data[:,1])
+# Now we will find the index of the minimum temperature
+index = np.where(data == min_temp)
+# Now we will find the eutectic point
+eutectic_temp = data[index]
+eutectic_comp = data[([index[0][0]],[0])]
+# Now we will plot the eutectic point
+plt.xlabel(f"% Comp of {element1.name}")
+plt.ylabel("Temperature in K")
+plt.plot(x, [eutectic_temp[0] for i in x], 'g')
+plt.plot(eutectic_comp[0], eutectic_temp[0], 'ro')
+# Set the range of the y_axis to include just below the eutectic point so the annotation is visible
+plt.ylim(min_temp - 100, eutectic_temp[0] + 300)
+plt.annotate(f'Eutectic Point\n%Comp of {element1.name}: {round(eutectic_comp[0],3)}\nTemp in K: {round(eutectic_temp[0],3)}', (eutectic_comp[0], eutectic_temp[0] - 75))
+plt.show()
+
